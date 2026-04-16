@@ -1,3 +1,19 @@
+variable "github_app_installation_id" {
+  type = number
+}
+
+locals {
+  project_number = data.google_project.project.number
+
+  image_base_url = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_id}/${var.service_name}"
+
+  cloudbuild_sa = "${local.project_number}@cloudbuild.gserviceaccount.com"
+}
+
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
 resource "google_project_service" "run" {
   service = "run.googleapis.com"
 }
@@ -18,31 +34,11 @@ resource "google_project_service" "secretmanager" {
   service = "secretmanager.googleapis.com"
 }
 
-# trigger service account start
-# resource "google_service_account" "cloudbuild" {
-#   account_id   = "cloudbuild-sa"
-#   display_name = "Cloud Build Service Account"
-# }
-
-# resource "google_project_iam_member" "cloudbuild_run" {
-#   project = var.project_id
-#   role   = "roles/run.admin"
-#   member = "serviceAccount:${google_service_account.cloudbuild.email}"
-# }
-
-# resource "google_project_iam_member" "cloudbuild_iam" {
-#   project = var.project_id
-#   role   = "roles/iam.serviceAccountUser"
-#   member = "serviceAccount:${google_service_account.cloudbuild.email}"
-# }
-
 resource "google_project_iam_member" "cloudbuild_artifact" {
   project = var.project_id
   role   = "roles/artifactregistry.writer"
   member = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
-
-# trigger service account end
 
 resource "google_project_iam_member" "cloudbuild_secret" {
   project = var.project_id
@@ -68,60 +64,13 @@ resource "google_secret_manager_secret_iam_member" "cloudbuild_connection_secret
   ]
 }
 
-# data "google_cloudbuildv2_connection" "github" {
-#   project  = var.project_id
-#   location = var.region
-#   name     = "github-connection"
-# }
-
-# resource "google_cloudbuildv2_connection" "github" {
-#   project  = var.project_id
-#   location = var.region
-#   # location = "global"
-#   name     = "github-connection"
-
-#   # github_config {
-#   #   app_installation_id = var.github_app_installation_id
-#   # }
-
-#   # github_config {
-#   #   app_installation_id = var.github_app_installation_id
-
-#   #   authorizer_credential {
-#   #     oauth_token_secret_version = "projects/${var.project_id}/secrets/github-pat/versions/latest"
-#   #   }
-#   # }
-
-#   # depends_on = [
-#   #   google_project_service.cloudbuild,
-#   #   google_secret_manager_secret_iam_member.cloudbuild_connection_secret
-#   # ]
-# }
-
-data "google_project" "project" {
-  project_id = var.project_id
-}
-
-locals {
-  project_number = data.google_project.project.number
-
-  image_base_url = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_id}/${var.service_name}"
-
-  cloudbuild_sa = "${local.project_number}@cloudbuild.gserviceaccount.com"
-}
-
-variable "github_app_installation_id" {
-  type = number
-}
-
 resource "google_cloudbuildv2_repository" "repo" {
   project           = var.project_id
   location          = var.region
-  # location          = "global"
   name              = var.github_repo
 
+  # created manually via UI
   parent_connection = "github-connection"
-  # parent_connection = data.google_cloudbuildv2_connection.github.name
 
   depends_on = [
     google_project_service.cloudbuild
@@ -133,7 +82,6 @@ resource "google_cloudbuildv2_repository" "repo" {
 resource "google_cloudbuild_trigger" "trigger" {
   project  = var.project_id
   location = var.region
-  # location = "global"
   name     = "${var.service_name}-deploy"
 
   repository_event_config {
@@ -144,7 +92,6 @@ resource "google_cloudbuild_trigger" "trigger" {
     }
   }
 
-  # service_account = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
   service_account = google_service_account.cloudbuild.id
 
   build {
@@ -187,7 +134,7 @@ resource "google_cloudbuild_trigger" "trigger" {
 
   depends_on = [
     google_project_service.cloudbuild,
-    google_project_service.artifact # because it pushes to AR
+    google_project_service.artifact
   ]
 }
 
@@ -209,6 +156,7 @@ resource "google_cloud_run_v2_service" "app" {
   depends_on = [ google_project_service.run ]
 }
 
+# Public access to the app
 resource "google_cloud_run_v2_service_iam_member" "public" {
   project  = google_cloud_run_v2_service.app.project
   location = google_cloud_run_v2_service.app.location
@@ -226,13 +174,11 @@ resource "google_service_account" "cloudbuild" {
 resource "google_project_iam_member" "cloudbuild_run" {
   project = var.project_id
   role    = "roles/run.developer"
-  # member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
   member  = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
 
 resource "google_project_iam_member" "cloudbuild_sa" {
   project = var.project_id
   role    = "roles/iam.serviceAccountUser"
-  # member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
   member  = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
