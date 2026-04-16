@@ -16,22 +16,27 @@ data "google_project" "project" {
 
 resource "google_project_service" "run" {
   service = "run.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "artifact" {
   service = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "cloudbuild" {
   service = "cloudbuild.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "cloudresourcemanager" {
   service = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "secretmanager" {
   service = "secretmanager.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_iam_member" "cloudbuild_artifact" {
@@ -50,6 +55,10 @@ resource "google_artifact_registry_repository" "repo" {
   repository_id = var.repository_id
   location      = var.region
   format        = "DOCKER"
+
+  depends_on = [
+    google_project_service.artifact
+  ]
 }
 
 resource "google_secret_manager_secret_iam_member" "cloudbuild_connection_secret" {
@@ -145,7 +154,7 @@ resource "google_cloud_run_v2_service" "app" {
 
   template {
     containers {
-      image = "${local.image_base_url}:latest"
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
     }
   }
 
