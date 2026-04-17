@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/vs/p/ucu/de/07-cloud-platforms/ASPNETCore-WebAPI-Sample/**)",
+      "Bash(gcloud artifacts *)",
+      "Bash(gcloud run *)"
+    ]
+  }
+}
