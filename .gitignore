@@ -3,9 +3,11 @@ hw2-old
 hw2-backup
 
 # hw4
-hw4/function_source.zip
-hw4/terraform/.terraform/
-hw4/terraform/.terraform.lock.hcl
-hw4/terraform/terraform.tfstate
-hw4/terraform/terraform.tfstate.backup
-hw4/terraform/*.tfplan
+function_source.zip
+
+.terraform
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan
+terraform.tfvars
